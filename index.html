@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wordle Helper SPA</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <h1>Wordle Helper</h1>
+      <p class="subtitle">Recreate your board first, then choose how much help you want.</p>
+
+      <section>
+        <h2>1) Enter current board state</h2>
+        <div id="board" class="board" aria-label="Wordle board"></div>
+        <p class="help-text">Type letters into each row. Click a tile to cycle status: gray → yellow → green.</p>
+      </section>
+
+      <section class="controls">
+        <h2>2) Pick your help level</h2>
+        <div class="button-row">
+          <button id="count-btn">Show candidate count</button>
+          <button id="random-btn">Show random candidate</button>
+          <button id="best-btn">Show most-information guess</button>
+          <button id="all-btn">Show all candidates</button>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="hard-mode" />
+          Hard mode for “most-information guess” (must obey all revealed clues)
+        </label>
+      </section>
+
+      <section class="output">
+        <h2>Output</h2>
+        <pre id="output">No output yet. Start by entering your board status.</pre>
+      </section>
+    </main>
+
+    <script src="words.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
