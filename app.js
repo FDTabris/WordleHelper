@@ -119,33 +119,118 @@ function validateBoard() {
   });
 
   if (!isValid) {
-    print("Input has conflicts. Red tiles must be fixed before showing candidates or hints.");
+    print("Input has conflicts. Red borders must be fixed before showing candidates or hints.");
   }
 
   return isValid;
 }
 
 function findInvalidTiles() {
-  const invalid = [];
-  const graySeen = new Set();
+  const invalidByKey = new Map();
+  const knowledge = {
+    absentLetters: new Set(),
+    minCounts: new Map(),
+    forbiddenPositions: new Map(),
+    requiredAtPosition: new Map(),
+  };
 
   for (let r = 0; r < ROWS; r += 1) {
+    const rowTiles = [];
     for (let c = 0; c < COLS; c += 1) {
       const cell = getCell(r, c);
       if (!cell.value) continue;
+      rowTiles.push({ row: r, col: c, letter: cell.value.toLowerCase(), state: Number(cell.dataset.state) });
+    }
 
-      const letter = cell.value.toLowerCase();
-      const state = Number(cell.dataset.state);
+    if (!rowTiles.length) continue;
 
-      if (state === 0) {
-        graySeen.add(letter);
-      } else if (graySeen.has(letter)) {
-        invalid.push({ row: r, col: c });
+    for (const tile of rowTiles) {
+      const requiredLetter = knowledge.requiredAtPosition.get(tile.col);
+      if (requiredLetter) {
+        if (tile.letter === requiredLetter && tile.state !== 2) {
+          addInvalid(invalidByKey, tile.row, tile.col);
+        }
+        if (tile.state === 2 && tile.letter !== requiredLetter) {
+          addInvalid(invalidByKey, tile.row, tile.col);
+        }
       }
+
+      const forbidden = knowledge.forbiddenPositions.get(tile.letter);
+      if (forbidden && forbidden.has(tile.col) && tile.state === 2) {
+        addInvalid(invalidByKey, tile.row, tile.col);
+      }
+
+      if (knowledge.absentLetters.has(tile.letter) && tile.state !== 0) {
+        addInvalid(invalidByKey, tile.row, tile.col);
+      }
+    }
+
+    if (rowTiles.length === COLS) {
+      markImpossibleGrayByMinCount(rowTiles, knowledge.minCounts, invalidByKey);
+      updateKnowledgeFromCompleteRow(rowTiles, knowledge);
     }
   }
 
-  return invalid;
+  return Array.from(invalidByKey.values());
+}
+
+function markImpossibleGrayByMinCount(rowTiles, minCounts, invalidByKey) {
+  const rowByLetter = new Map();
+  for (const tile of rowTiles) {
+    if (!rowByLetter.has(tile.letter)) rowByLetter.set(tile.letter, []);
+    rowByLetter.get(tile.letter).push(tile);
+  }
+
+  for (const [letter, tiles] of rowByLetter.entries()) {
+    const minRequired = minCounts.get(letter) || 0;
+    if (!minRequired) continue;
+    if (tiles.length > minRequired) continue;
+
+    for (const tile of tiles) {
+      if (tile.state === 0) {
+        addInvalid(invalidByKey, tile.row, tile.col);
+      }
+    }
+  }
+}
+
+function updateKnowledgeFromCompleteRow(rowTiles, knowledge) {
+  const counts = new Map();
+
+  for (const tile of rowTiles) {
+    if (!counts.has(tile.letter)) counts.set(tile.letter, { nonGray: 0, gray: 0 });
+    const counter = counts.get(tile.letter);
+    if (tile.state === 0) {
+      counter.gray += 1;
+    } else {
+      counter.nonGray += 1;
+    }
+
+    if (tile.state === 1) {
+      if (!knowledge.forbiddenPositions.has(tile.letter)) knowledge.forbiddenPositions.set(tile.letter, new Set());
+      knowledge.forbiddenPositions.get(tile.letter).add(tile.col);
+    }
+
+    if (tile.state === 2 && !knowledge.requiredAtPosition.has(tile.col)) {
+      knowledge.requiredAtPosition.set(tile.col, tile.letter);
+    }
+  }
+
+  for (const [letter, stat] of counts.entries()) {
+    const currentMin = knowledge.minCounts.get(letter) || 0;
+    knowledge.minCounts.set(letter, Math.max(currentMin, stat.nonGray));
+
+    if (stat.nonGray === 0 && stat.gray > 0) {
+      knowledge.absentLetters.add(letter);
+    }
+  }
+}
+
+function addInvalid(invalidByKey, row, col) {
+  const key = `${row}-${col}`;
+  if (!invalidByKey.has(key)) {
+    invalidByKey.set(key, { row, col });
+  }
 }
 
 function print(msg) {

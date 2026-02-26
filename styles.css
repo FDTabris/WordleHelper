@@ -52,8 +52,8 @@ h1, h2 { margin: 0.4rem 0; }
 }
 
 .tile.invalid {
-  background: var(--danger) !important;
-  border-color: #8b1412;
+  border-color: var(--danger);
+  box-shadow: 0 0 0 1px var(--danger);
 }
 
 .row.locked {
