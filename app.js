@@ -96,9 +96,7 @@ document.getElementById("best-btn").addEventListener("click", () => {
 
   print(`Most-information guess: ${best.word}
 Estimated info gain score: ${best.infoGain.toFixed(2)}
-Candidates remaining: ${candidates.length}${hardMode ? "
-Hard mode: ON" : "
-Hard mode: OFF"}`);
+Candidates remaining: ${candidates.length}${hardMode ? "\nHard mode: ON" : "\nHard mode: OFF"}`);
 });
 
 document.getElementById("all-btn").addEventListener("click", () => {
