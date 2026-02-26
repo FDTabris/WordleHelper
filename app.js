@@ -31,7 +31,22 @@ function buildBoard() {
 
       input.addEventListener("input", () => {
         input.value = input.value.replace(/[^a-z]/gi, "").toLowerCase();
-        focusNext(r, c);
+        if (input.value) {
+          focusByOffset(r, c, 1);
+        }
+        refreshBoardUI();
+        validateBoard();
+      });
+
+      input.addEventListener("keydown", (event) => {
+        if (event.key !== "Backspace") return;
+
+        if (input.value) {
+          input.value = "";
+          event.preventDefault();
+        }
+
+        focusByOffset(r, c, -1);
         refreshBoardUI();
         validateBoard();
       });
@@ -73,10 +88,14 @@ function refreshBoardUI() {
   }
 }
 
-function focusNext(r, c) {
-  if (c >= COLS - 1) return;
-  const next = getCell(r, c + 1);
-  if (next) next.focus();
+function focusByOffset(r, c, offset) {
+  const nextIndex = r * COLS + c + offset;
+  if (nextIndex < 0 || nextIndex >= ROWS * COLS) return;
+
+  const nextRow = Math.floor(nextIndex / COLS);
+  const nextCol = nextIndex % COLS;
+  const target = getCell(nextRow, nextCol);
+  if (target && !target.disabled) target.focus();
 }
 
 function getCell(r, c) {
