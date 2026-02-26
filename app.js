@@ -4,14 +4,19 @@ const COLS = 5;
 const boardEl = document.getElementById("board");
 const outputEl = document.getElementById("output");
 const hardModeEl = document.getElementById("hard-mode");
-buildBoard();
-print(`Loaded ${window.WORDS.length} vendored words. Enter your board status to begin.`);
+const actionButtons = ["count-btn", "random-btn", "best-btn", "all-btn"].map((id) => document.getElementById(id));
+const clearBtn = document.getElementById("clear-btn");
 
+buildBoard();
+refreshBoardVisibility();
+validateBoard();
+print(`Loaded ${window.WORDS.length} vendored words. Enter your board status to begin.`);
 
 function buildBoard() {
   for (let r = 0; r < ROWS; r += 1) {
     const row = document.createElement("div");
     row.className = "row";
+    row.dataset.row = String(r);
     for (let c = 0; c < COLS; c += 1) {
       const input = document.createElement("input");
       input.className = "tile";
@@ -22,9 +27,13 @@ function buildBoard() {
       input.addEventListener("input", () => {
         input.value = input.value.replace(/[^a-z]/gi, "").toLowerCase();
         focusNext(r, c);
+        refreshBoardVisibility();
+        validateBoard();
       });
       input.addEventListener("click", () => {
+        if (!input.value) return;
         input.dataset.state = String((Number(input.dataset.state) + 1) % 3);
+        validateBoard();
       });
       row.appendChild(input);
     }
@@ -32,10 +41,40 @@ function buildBoard() {
   }
 }
 
+function isRowComplete(r) {
+  for (let c = 0; c < COLS; c += 1) {
+    const cell = getCell(r, c);
+    if (!cell.value) return false;
+  }
+  return true;
+}
+
+function refreshBoardVisibility() {
+  let unlocked = true;
+  for (let r = 0; r < ROWS; r += 1) {
+    const rowEl = boardEl.querySelector(`.row[data-row='${r}']`);
+    if (!rowEl) continue;
+
+    rowEl.classList.toggle("row-hidden", !unlocked);
+    const inputs = rowEl.querySelectorAll(".tile");
+    inputs.forEach((tile) => {
+      tile.disabled = !unlocked;
+    });
+
+    if (unlocked && !isRowComplete(r)) {
+      unlocked = false;
+    }
+  }
+}
+
 function focusNext(r, c) {
   if (c >= COLS - 1) return;
-  const next = boardEl.querySelector(`.tile[data-row='${r}'][data-col='${c + 1}']`);
+  const next = getCell(r, c + 1);
   if (next) next.focus();
+}
+
+function getCell(r, c) {
+  return boardEl.querySelector(`.tile[data-row='${r}'][data-col='${c}']`);
 }
 
 function getRows() {
@@ -44,13 +83,13 @@ function getRows() {
     const letters = [];
     const states = [];
     for (let c = 0; c < COLS; c += 1) {
-      const cell = boardEl.querySelector(`.tile[data-row='${r}'][data-col='${c}']`);
+      const cell = getCell(r, c);
       letters.push(cell.value || "");
       states.push(Number(cell.dataset.state));
     }
 
     if (letters.every((x) => x.length === 1)) {
-      rows.push({ guess: letters.join(""), states });
+      rows.push({ guess: letters.join(""), states, rowIndex: r });
     }
   }
   return rows;
@@ -156,53 +195,141 @@ function isHardModeValid(guess, rows) {
   return true;
 }
 
+function clearInvalidMarks() {
+  boardEl.querySelectorAll(".tile-invalid").forEach((tile) => tile.classList.remove("tile-invalid"));
+}
+
+function validateBoard() {
+  clearInvalidMarks();
+  const rows = getRows();
+  const invalidCells = [];
+
+  const definitelyGray = new Set();
+  const seenPresent = new Set();
+
+  for (const row of rows) {
+    for (let i = 0; i < COLS; i += 1) {
+      const ch = row.guess[i];
+      const st = row.states[i];
+      if (st > 0) seenPresent.add(ch);
+    }
+
+    for (let i = 0; i < COLS; i += 1) {
+      const ch = row.guess[i];
+      const st = row.states[i];
+      if (st === 0 && !seenPresent.has(ch)) {
+        definitelyGray.add(ch);
+      }
+    }
+
+    for (let i = 0; i < COLS; i += 1) {
+      const ch = row.guess[i];
+      const st = row.states[i];
+      if (definitelyGray.has(ch) && st > 0) {
+        const cell = getCell(row.rowIndex, i);
+        invalidCells.push(cell);
+      }
+    }
+  }
+
+  for (let i = 1; i <= rows.length; i += 1) {
+    const subset = rows.slice(0, i);
+    if (subset.length && filterCandidates(subset).length === 0) {
+      const conflictRowIndex = subset[subset.length - 1].rowIndex;
+      for (let c = 0; c < COLS; c += 1) {
+        invalidCells.push(getCell(conflictRowIndex, c));
+      }
+    }
+  }
+
+  invalidCells.forEach((cell) => cell.classList.add("tile-invalid"));
+  const valid = invalidCells.length === 0;
+  setActionButtonsEnabled(valid);
+
+  if (!valid) {
+    print("Invalid board state detected. Fix highlighted tiles before requesting candidates or hints.");
+  }
+
+  return valid;
+}
+
+function setActionButtonsEnabled(enabled) {
+  actionButtons.forEach((button) => {
+    button.disabled = !enabled;
+  });
+}
+
 function print(msg) {
   outputEl.textContent = msg;
 }
 
-document.getElementById("count-btn").addEventListener("click", () => {
+function withValidBoard(action) {
+  const valid = validateBoard();
+  if (!valid) return;
   const rows = getRows();
-  const candidates = filterCandidates(rows);
-  print(`Remaining candidate words: ${candidates.length}`);
+  action(rows);
+}
+
+document.getElementById("count-btn").addEventListener("click", () => {
+  withValidBoard((rows) => {
+    const candidates = filterCandidates(rows);
+    print(`Remaining candidate words: ${candidates.length}`);
+  });
 });
 
 document.getElementById("random-btn").addEventListener("click", () => {
-  const rows = getRows();
-  const candidates = filterCandidates(rows);
-  if (!candidates.length) {
-    print("No candidates found. Double-check your board input.");
-    return;
-  }
+  withValidBoard((rows) => {
+    const candidates = filterCandidates(rows);
+    if (!candidates.length) {
+      print("No candidates found. Double-check your board input.");
+      return;
+    }
 
-  const pick = candidates[Math.floor(Math.random() * candidates.length)];
-  print(`Random candidate hint: ${pick} (remaining: ${candidates.length})`);
+    const pick = candidates[Math.floor(Math.random() * candidates.length)];
+    print(`Random candidate hint: ${pick} (remaining: ${candidates.length})`);
+  });
 });
 
 document.getElementById("best-btn").addEventListener("click", () => {
-  const rows = getRows();
-  const candidates = filterCandidates(rows);
-  if (!candidates.length) {
-    print("No candidates found. Double-check your board input.");
-    return;
-  }
+  withValidBoard((rows) => {
+    const candidates = filterCandidates(rows);
+    if (!candidates.length) {
+      print("No candidates found. Double-check your board input.");
+      return;
+    }
 
-  const hardMode = hardModeEl.checked;
-  const best = bestInformationGuess(candidates, rows, hardMode);
-  if (!best.word) {
-    print("No valid hint word found for selected mode.");
-    return;
-  }
+    const hardMode = hardModeEl.checked;
+    const best = bestInformationGuess(candidates, rows, hardMode);
+    if (!best.word) {
+      print("No valid hint word found for selected mode.");
+      return;
+    }
 
-  print(`Most-information guess: ${best.word}\nEstimated info gain score: ${best.infoGain.toFixed(2)}\nCandidates remaining: ${candidates.length}${hardMode ? "\nHard mode: ON" : "\nHard mode: OFF"}`);
+    print(`Most-information guess: ${best.word}\nEstimated info gain score: ${best.infoGain.toFixed(2)}\nCandidates remaining: ${candidates.length}${hardMode ? "\nHard mode: ON" : "\nHard mode: OFF"}`);
+  });
 });
 
 document.getElementById("all-btn").addEventListener("click", () => {
-  const rows = getRows();
-  const candidates = filterCandidates(rows);
-  if (!candidates.length) {
-    print("No candidates found. Double-check your board input.");
-    return;
-  }
+  withValidBoard((rows) => {
+    const candidates = filterCandidates(rows);
+    if (!candidates.length) {
+      print("No candidates found. Double-check your board input.");
+      return;
+    }
 
-  print(`All candidates (${candidates.length}):\n${candidates.join(", ")}`);
+    print(`All candidates (${candidates.length}):\n${candidates.join(", ")}`);
+  });
+});
+
+clearBtn.addEventListener("click", () => {
+  boardEl.querySelectorAll(".tile").forEach((tile) => {
+    tile.value = "";
+    tile.dataset.state = "0";
+    tile.classList.remove("tile-invalid");
+  });
+  refreshBoardVisibility();
+  setActionButtonsEnabled(true);
+  print("Board cleared. Enter your board status to begin.");
+  const first = getCell(0, 0);
+  if (first) first.focus();
 });

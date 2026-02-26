@@ -1,12 +1,12 @@
 :root {
-  color-scheme: dark;
-  --bg: #121213;
-  --panel: #1e1f22;
-  --text: #f8f8f8;
-  --muted: #bcbcbc;
-  --gray: #3a3a3c;
-  --yellow: #b59f3b;
-  --green: #538d4e;
+  color-scheme: light;
+  --bg: #ffffff;
+  --panel: #f6f7f8;
+  --text: #1a1a1a;
+  --muted: #545454;
+  --gray: #787c7e;
+  --yellow: #c9b458;
+  --green: #6aaa64;
 }
 
 * { box-sizing: border-box; }
@@ -44,7 +44,7 @@ h1, h2 { margin: 0.4rem 0; }
   height: 3rem;
   border: 2px solid #565758;
   background: transparent;
-  color: white;
+  color: #ffffff;
   font-size: 1.4rem;
   text-transform: uppercase;
   text-align: center;
@@ -70,7 +70,7 @@ h1, h2 { margin: 0.4rem 0; }
 
 button {
   background: #2d2f34;
-  color: white;
+  color: #ffffff;
   border: 1px solid #4b4f58;
   padding: 0.6rem 0.8rem;
   border-radius: 0.35rem;
@@ -88,4 +88,32 @@ button:hover { background: #3a3d45; }
   border: 1px solid #2b2d31;
   white-space: pre-wrap;
   min-height: 80px;
+}
+
+
+.row-hidden { display: none; }
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.secondary {
+  background: #e7eaef;
+  color: #1a1a1a;
+  border-color: #bfc6d2;
+}
+
+button.secondary:hover {
+  background: #dbe0e8;
+}
+
+.tile-invalid {
+  outline: 3px solid #d93025;
+  outline-offset: 1px;
+}
+
+
+.clear-btn {
+  margin-top: 0.4rem;
 }
