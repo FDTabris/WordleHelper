@@ -5,8 +5,11 @@ const boardEl = document.getElementById("board");
 const outputEl = document.getElementById("output");
 const hardModeEl = document.getElementById("hard-mode");
 const clearBtn = document.getElementById("clear-btn");
-const actionButtons = ["count-btn", "random-btn", "best-btn", "all-btn"].map((id) =>
+const actionButtons = ["count-btn", "random-btn", "best-btn", "all-btn", "all-valid-btn"].map((id) =>
   document.getElementById(id),
+);
+const allValidGuessPool = Array.from(
+  new Set([...(window.WORDS || []), ...(window.VALID_GUESSES || [])]),
 );
 const { filterCandidates, bestInformationGuess } = window.Solver;
 
@@ -325,4 +328,18 @@ document.getElementById("all-btn").addEventListener("click", () => {
 
   print(`All candidates (${candidates.length}):
 ${candidates.join(", ")}`);
+});
+
+document.getElementById("all-valid-btn").addEventListener("click", () => {
+  if (!validateBoard()) return;
+
+  const rows = getRows();
+  const validGuessesLeft = filterCandidates(rows, allValidGuessPool);
+  if (!validGuessesLeft.length) {
+    print("No valid guesses left. Double-check your board input.");
+    return;
+  }
+
+  print(`All valid guesses left (${validGuessesLeft.length}):
+${validGuessesLeft.join(", ")}`);
 });
